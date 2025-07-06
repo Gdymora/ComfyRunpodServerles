@@ -1,0 +1,13 @@
+/* src/styles/globals.css */
+@import "tailwindcss"; 
+.font-pacifico {
+    font-family: 'Pacifico', cursive;
+  }
+
+.colortuls {
+  accent-color:#e9a5a5;
+}
+
+.colortulstext{
+ color:#e9a5a5;
+}
