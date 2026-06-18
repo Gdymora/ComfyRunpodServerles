@@ -39,33 +39,31 @@ const App: React.FC = () => {
     config.RUNPOD.PROXY_URL
   );
 
-  // Конвертація зображення в base64
+  // Конвертація зображення в base64 (без data URL префіксу)
   const imageToBase64 = async (imageInfo: ImageInfo): Promise<string> => {
-    try {
-      const imageUrl = `${config.VIEW_URL}?filename=${encodeURIComponent(
-        imageInfo.filename
-      )}&subfolder=${encodeURIComponent(
-        imageInfo.subfolder || ""
-      )}&type=${encodeURIComponent(imageInfo.type)}`;
-
-      const response = await fetch(imageUrl);
-      if (!response.ok) throw new Error("Failed to fetch image");
-
-      const blob = await response.blob();
-
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          const base64 = result.split(",")[1]; // без data:image/...
-          resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch (error) {
-      throw new Error("Failed to convert image to base64");
+    if (!imageInfo.url) {
+      throw new Error("No image URL available");
     }
+
+    // imageInfo.url is a base64 data URL stored by ImageLoader
+    if (imageInfo.url.startsWith("data:")) {
+      return imageInfo.url.split(",")[1];
+    }
+
+    // Fallback: blob URL or remote URL
+    const response = await fetch(imageInfo.url);
+    if (!response.ok) throw new Error("Failed to fetch image");
+    const blob = await response.blob();
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        resolve(result.split(",")[1]);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
   };
 
   const handleGenerate = async () => {
@@ -474,7 +472,7 @@ const App: React.FC = () => {
                 • <strong>Ендпоїнт:</strong> {config.RUNPOD.ENDPOINT_ID}
               </li>
               <li>
-                • <strong>URL:</strong> {config.RUNPOD.API_BASE_URL}/
+                • <strong>URL:</strong> {config.RUNPOD.PROXY_URL}/api/
                 {config.RUNPOD.ENDPOINT_ID}
               </li>
               <li>• Виберіть тип введення та заповніть поля</li>

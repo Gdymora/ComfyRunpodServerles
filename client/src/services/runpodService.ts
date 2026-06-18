@@ -1,5 +1,5 @@
 // src/services/runpodService.ts - Сервіс для роботи через проксі
-import { createFluxWorkflow } from "../utils/promptUtils";
+import { createFluxWorkflow, createFluxImg2ImgWorkflow } from "../utils/promptUtils";
 
 export interface RunPodRequest {
   input: {
@@ -240,53 +240,54 @@ export class RunPodService {
     }
   }
 
-  // Генерація з зображення
+  // Генерація з зображення (img2img)
   async generateFromImage(
     imageBase64: string,
     options?: Partial<RunPodRequest["input"]>
-  ): Promise<RunPodResponse> {
-    const request: RunPodRequest = {
-      input: {
-        image: imageBase64,
-        ...options,
-      },
-    };
+  ): Promise<ProcessedRunPodResponse> {
+    const request = createFluxImg2ImgWorkflow(
+      imageBase64,
+      "",
+      options?.seed,
+      0.75
+    );
 
-    // Спочатку пробуємо синхронно
     try {
-      return await this.runsync(request, 120);
+      const response = await this.runsync(request as any, 120);
+      const processedImages = response.output ? this.processImages(response.output) : [];
+      return { ...response, processedImages };
     } catch (syncError) {
       console.log("Sync failed, trying async:", syncError);
-
-      // Fallback на асинхронний режим
-      const { id } = await this.run(request);
-      return await this.waitForCompletion(id);
+      const { id } = await this.run(request as any);
+      const response = await this.waitForCompletion(id);
+      const processedImages = response.output ? this.processImages(response.output) : [];
+      return { ...response, processedImages };
     }
   }
 
-  // Комбінована генерація
+  // Комбінована генерація (image + text prompt)
   async generateFromImageAndText(
     imageBase64: string,
     prompt: string,
     options?: Partial<RunPodRequest["input"]>
-  ): Promise<RunPodResponse> {
-    const request: RunPodRequest = {
-      input: {
-        image: imageBase64,
-        prompt,
-        ...options,
-      },
-    };
+  ): Promise<ProcessedRunPodResponse> {
+    const request = createFluxImg2ImgWorkflow(
+      imageBase64,
+      prompt,
+      options?.seed,
+      0.75
+    );
 
-    // Спочатку пробуємо синхронно
     try {
-      return await this.runsync(request, 120);
+      const response = await this.runsync(request as any, 120);
+      const processedImages = response.output ? this.processImages(response.output) : [];
+      return { ...response, processedImages };
     } catch (syncError) {
       console.log("Sync failed, trying async:", syncError);
-
-      // Fallback на асинхронний режим
-      const { id } = await this.run(request);
-      return await this.waitForCompletion(id);
+      const { id } = await this.run(request as any);
+      const response = await this.waitForCompletion(id);
+      const processedImages = response.output ? this.processImages(response.output) : [];
+      return { ...response, processedImages };
     }
   }
 }

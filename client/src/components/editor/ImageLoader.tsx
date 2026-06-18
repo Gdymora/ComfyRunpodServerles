@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { ImageInfo } from '../../types/image';
 import { ImageLoaderProps } from './types';
-import { createImageUrl, getImageDimensions } from '../../utils/imageUtils';
+import { getImageDimensions } from '../../utils/imageUtils';
 import { SUPPORTED_IMAGE_TYPES, MAX_IMAGE_SIZE } from '../../utils/const';
 
 export const ImageLoader: React.FC<ImageLoaderProps> = ({ 
@@ -36,32 +36,31 @@ export const ImageLoader: React.FC<ImageLoaderProps> = ({
       }
 
       setLoading(true);
-      
-      const uploadResult = await api.uploadImage(file);
-      
-      if (!uploadResult.success) {
-        throw new Error(uploadResult.error || 'Не вдалося завантажити зображення');
-      }
 
-      // Створюємо URL для завантаженого зображення для отримання розмірів
-      const blobUrl = URL.createObjectURL(file);
-      const dimensions = await getImageDimensions(blobUrl);
-      URL.revokeObjectURL(blobUrl);
+      // Convert to base64 data URL locally — no server upload needed for RunPod serverless
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const dimensions = await getImageDimensions(dataUrl);
 
       const imageInfo: ImageInfo = {
-        filename: uploadResult.data?.filename || file.name,
-        subfolder: uploadResult.data?.subfolder || '',
+        filename: file.name,
+        subfolder: '',
         type: 'input',
         width: dimensions.width,
         height: dimensions.height,
+        url: dataUrl,
         metadata: {
           originalName: file.name,
           timestamp: Date.now()
         }
       };
 
-      const previewUrl = createImageUrl(imageInfo);
-      setPreviewUrl(previewUrl);
+      setPreviewUrl(dataUrl);
       setImagePath(`${imageInfo.filename} [input]`);
       onImageLoad(imageInfo);
     } catch (error) {
