@@ -8,7 +8,10 @@ export interface ImageInfo {
   width?: number;
   height?: number;
   metadata?: ImageMetadata;
+  /** data: URL для прев'ю в браузері */
   url?: string;
+  /** Чистий base64 (без префікса data:) — надсилається у воркер RunPod */
+  base64?: string;
 }
 
 export interface ImageMetadata {

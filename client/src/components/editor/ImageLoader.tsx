@@ -5,6 +5,15 @@ import { ImageLoaderProps } from './types';
 import { getImageDimensions } from '../../utils/imageUtils';
 import { SUPPORTED_IMAGE_TYPES, MAX_IMAGE_SIZE } from '../../utils/const';
 
+// Читаємо файл як data:URL (для прев'ю) + чистий base64 (для воркера RunPod).
+const readAsDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
 export const ImageLoader: React.FC<ImageLoaderProps> = ({ 
   onImageLoad,
   className = ''
@@ -37,14 +46,10 @@ export const ImageLoader: React.FC<ImageLoaderProps> = ({
 
       setLoading(true);
 
-      // Convert to base64 data URL locally — no server upload needed for RunPod serverless
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
+      // Клієнтський флоу: без проміжного сервера-аплоуду. Воркер RunPod приймає
+      // зображення напряму як base64 у полі input.images.
+      const dataUrl = await readAsDataUrl(file);
+      const base64 = dataUrl.split(',')[1];
       const dimensions = await getImageDimensions(dataUrl);
 
       const imageInfo: ImageInfo = {
@@ -54,6 +59,7 @@ export const ImageLoader: React.FC<ImageLoaderProps> = ({
         width: dimensions.width,
         height: dimensions.height,
         url: dataUrl,
+        base64,
         metadata: {
           originalName: file.name,
           timestamp: Date.now()

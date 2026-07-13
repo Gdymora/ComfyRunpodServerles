@@ -2,10 +2,37 @@
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// ── Файлове логування (для дебагу): пишемо у logs/proxy.log ──
+// НЕ пишемо у файл API-ключ і base64 (довгі рядки обрізаються).
+const LOG_DIR = path.join(__dirname, 'logs');
+const LOG_FILE = path.join(LOG_DIR, 'proxy.log');
+try { fs.mkdirSync(LOG_DIR, { recursive: true }); } catch (_) { /* ignore */ }
+
+function truncateLongStrings(obj, max = 400) {
+  if (typeof obj === 'string') {
+    return obj.length > max ? `<string:${obj.length} chars>` : obj;
+  }
+  if (Array.isArray(obj)) return obj.map((x) => truncateLongStrings(x, max));
+  if (obj && typeof obj === 'object') {
+    const out = {};
+    for (const k of Object.keys(obj)) out[k] = truncateLongStrings(obj[k], max);
+    return out;
+  }
+  return obj;
+}
+
+function appendLog(text) {
+  try {
+    fs.appendFileSync(LOG_FILE, `[${new Date().toISOString()}] ${text}\n`);
+  } catch (_) { /* ignore file errors */ }
+}
 
 // Middleware
 app.use(cors());
@@ -26,6 +53,14 @@ function logRequest(method, url, headers, body) {
   console.log(`🔄 ${method} ${url}`);
   console.log('📋 Headers:', JSON.stringify(headers, null, 2));
   console.log('📤 Body:', method === 'GET' ? 'No body' : JSON.stringify(body, null, 2));
+
+  // У файл — без ключа, з обрізаними base64
+  appendLog(
+    `>>> REQUEST ${method} ${url}\n` +
+      (method === 'GET'
+        ? '(no body)'
+        : JSON.stringify(truncateLongStrings(body), null, 2))
+  );
 }
 
 function logResponse(status, data) {
@@ -33,6 +68,12 @@ function logResponse(status, data) {
   console.log('📥 Status:', status);
   console.log('📥 Data:', JSON.stringify(data, null, 2));
   console.log('========================\n');
+
+  appendLog(
+    `<<< RESPONSE ${status}\n` +
+      JSON.stringify(truncateLongStrings(data), null, 2) +
+      '\n============================================================'
+  );
 }
 
 // Проксі маршрут для RunPod
@@ -108,20 +149,24 @@ app.post('/api/runpod/:endpointId/:operation', async (req, res) => {
 
     const response = await fetch(url, options);
     
-    // Перевіряємо чи response є JSON
-    let responseData;
-    const contentType = response.headers.get('content-type');
-    
-    if (contentType && contentType.includes('application/json')) {
-      responseData = await response.json();
-    } else {
-      const textResponse = await response.text();
-      responseData = {
-        error: 'Non-JSON response',
-        content: textResponse,
-        contentType: contentType
-      };
-    }
+  const contentType = response.headers.get('content-type') || '';
+
+let responseData;
+
+if (
+  contentType.includes('application/json') ||
+  contentType.includes('+json')
+) {
+  responseData = await response.json();
+} else {
+  const textResponse = await response.text();
+
+  responseData = {
+    error: 'Non-JSON response',
+    content: textResponse,
+    contentType,
+  };
+}
 
     // Логуємо відповідь
     logResponse(response.status, responseData);

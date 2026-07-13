@@ -23,3 +23,21 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Конфіденційні нотатки з API-токенами Civitai (НЕ комітити)
+civitai.red.md
+history.md
+docker.md
+new.md
+
+# Кореневий Dockerfile містить Civitai-токен відкритим текстом (використовуйте worker/Dockerfile)
+/Dockerfile
+
+# Тестові згенеровані зображення
+RunPod_*.png
+
+# NSFW-плейсхолдери галереї — не заливаємо в публічний репозиторій (apple-test.png лишаємо)
+client/public/examples/example-*.png
+
+# Логи проксі (можуть містити промпти)
+runpod-proxy/logs/
