@@ -48,6 +48,40 @@ docker push <твій_dockerhub>/comfyui-nsfw-face:v1
    «Зберігати обличчя» та «FaceDetailer».
 3. Надсилати референс-фото у воркер як ще одне base64-зображення (`face.png`).
 
+## 🔧 Хитрощі: як витиснути з проекту максимум
+
+Відсортовано за співвідношенням «ефект / зусилля».
+
+### Швидкість / вартість (найлегші перемоги)
+- **FlashBoot** — увімкнути на Serverless-ендпоінті. Безкоштовно, холодний старт з ~20с до
+  **0.5–2с**, вартість −до 80% на нерегулярному навантаженні. Прибирає затики `IN_QUEUE`.
+- **Lightning/Turbo-версія Juggernaut** (4–8 кроків) — швидкі/дешеві прев'ю; фінал — повною
+  моделлю. Ставити CFG ~1.5–2, кроки 4–8.
+- **Batch 4** (вже в UI) — один холодний старт на кілька картинок.
+
+### Якість
+- **FreeU_V2** — ✅ вже додано в воркфлоу (тумблер «FreeU»). Безкоштовний буст деталей.
+- **RescaleCFG** — ✅ підтримується (`options.rescale_cfg` 0.5–0.8) проти «випаленої» текстури.
+- **FaceDetailer / ADetailer** — головний фікс рук/облич (ноди Impact-Pack у цьому образі +
+  детектори `face_yolov8m`/`hand_yolov8s`). Додати прохід перед фінальним VAEDecode.
+- **4x-UltraSharp** (у образі) — модельний апскейл на Hi-Res замість латент-bislerp → різкіша шкіра.
+- **Негативні embeddings** (FastNegativeV2/BadDream) — короткий негатив, чистіша анатомія.
+- **Фото-лексика в промпті**: `shot on Fujifilm, 50mm f/1.8, Kodak Portra 400, film grain,
+  subsurface scattering, skin pores, skin imperfections`.
+- **Pony→Juggernaut refiner** — ✅ вже реалізовано (анатомія Pony + шкіра Juggernaut).
+
+### Контроль
+- **ControlNet Union SDXL** (у образі) + `comfyui_controlnet_aux` — точна поза (OpenPose/Depth):
+  подаєте скелет/depth → та сама поза.
+- **InstantID / IP-Adapter FaceID** (у образі) — обличчя персонажа з одного фото.
+
+### Джерела досліджень
+- FlashBoot / cold-start: https://www.runpod.io/blog/introducing-flashboot-serverless-cold-start
+- SDXL Lightning: https://ucstrategies.com/news/sdxl-lightning-speed-benchmarks-4-step-setup-lora-guide-2026/
+- FreeU у ComfyUI: https://learn.runcomfy.com/revolutionize-image-quality-with-freeU-in-comfyui
+- Реалізм у ComfyUI: https://www.promptingpixels.com/tutorial/how-to-make-ai-images-look-more-realistic-in-comfyui
+- Гайд по SDXL-фотореалізму: https://sandner.art/ultimate-guide-to-sdxl-mastering-photorealism-in-generative-art-for-begginers-and-advanced/
+
 ## Корисні посилання
 
 - worker-comfyui customization (офіційна дока): https://github.com/runpod-workers/worker-comfyui/blob/main/docs/customization.md

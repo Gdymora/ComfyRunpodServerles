@@ -21,6 +21,8 @@ import {
   loadUserPresets,
   saveUserPreset,
   deleteUserPreset,
+  exportUserPresets,
+  importUserPresets,
 } from "./config/userPresets";
 
 type InputType = "text" | "image" | "both";
@@ -100,6 +102,7 @@ const App: React.FC = () => {
   const [batchCount, setBatchCount] = useState(1);
   // SFW-режим: чистий префікс без nude/explicit
   const [cleanPrefix, setCleanPrefix] = useState(false);
+  const [freeu, setFreeu] = useState(true); // FreeU_V2 — буст деталей
   // Сила зміни вхідного фото в режимах image/both (менше = ближче до оригіналу)
   const [denoise, setDenoise] = useState(0.65);
   // Inpaint (маска)
@@ -156,6 +159,32 @@ const App: React.FC = () => {
   const handleDeletePreset = (id: string) => {
     setUserPresets(deleteUserPreset(id));
     if (activeExampleId === id) setActiveExampleId(null);
+  };
+
+  // Бекап пресетів у файл (щоб не загубити при чистці браузера)
+  const handleExportPresets = () => {
+    const blob = new Blob([exportUserPresets()], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `presets-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportPresets = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        setUserPresets(importUserPresets(reader.result as string));
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Помилка імпорту пресетів");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ""; // дозволити повторний вибір того ж файлу
   };
 
   // Застосувати приклад із галереї: модель + промпт + усі налаштування + LoRA
@@ -271,6 +300,7 @@ const App: React.FC = () => {
         batch_size: batchCount,
         denoise,
         refiner: preset.refiner,
+        freeu,
       };
 
       // Для img2img (image/both) Hi-Res вимикаємо — цільовий розмір рахується від
@@ -424,6 +454,25 @@ const App: React.FC = () => {
               </span>
             </summary>
             <div className="mt-4">
+              <div className="flex flex-wrap gap-2 mb-3">
+                <button
+                  onClick={handleExportPresets}
+                  disabled={userPresets.length === 0}
+                  title="Зберегти всі мої пресети у файл (бекап)"
+                  className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white text-xs px-3 py-1.5 rounded"
+                >
+                  ⬇ Експорт пресетів ({userPresets.length})
+                </button>
+                <label className="bg-gray-700 hover:bg-gray-600 text-white text-xs px-3 py-1.5 rounded cursor-pointer">
+                  ⬆ Імпорт пресетів
+                  <input
+                    type="file"
+                    accept="application/json"
+                    onChange={handleImportPresets}
+                    className="hidden"
+                  />
+                </label>
+              </div>
               <Gallery
                 activeId={activeExampleId}
                 disabled={isLoading}
@@ -484,6 +533,21 @@ const App: React.FC = () => {
               SFW / чистий префікс
               <span className="text-gray-500 text-xs">
                 (прибирає авто-<code>nude</code>/<code>rating_explicit</code>, лишає якість)
+              </span>
+            </label>
+
+            {/* FreeU — буст деталей */}
+            <label className="flex items-center gap-2 mt-2 text-gray-200 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={freeu}
+                onChange={(e) => setFreeu(e.target.checked)}
+                disabled={isLoading}
+                className="w-4 h-4 accent-purple-600"
+              />
+              FreeU
+              <span className="text-gray-500 text-xs">
+                (безкоштовний буст деталей/контрасту; вимкніть, якщо перешарпить)
               </span>
             </label>
 

@@ -44,6 +44,10 @@ export interface WorkflowOptions {
   refiner_denoise?: number;
   /** Назва файлу маски (inpaint). Якщо задано — перемальовується лише замаскована зона. */
   mask_image?: string;
+  /** FreeU_V2 — безкоштовний буст деталей (вбудована нода ComfyUI) */
+  freeu?: boolean;
+  /** RescaleCFG multiplier (0.5–0.8) — проти «випаленої» текстури при вищому CFG */
+  rescale_cfg?: number;
 }
 
 export interface ComfyNode {
@@ -159,6 +163,25 @@ const buildSdxlWorkflow = (
       _meta: { title: `CLIP Skip ${clipSkip}` },
     };
     clipRef = ["60", 0];
+  }
+
+  // 50/51 — FreeU_V2 (безкоштовний буст деталей) та RescaleCFG (проти «випаленої» текстури).
+  // Вбудовані ноди ComfyUI — працюють і на базовому воркері.
+  if (options.freeu) {
+    workflow["50"] = {
+      inputs: { b1: 1.3, b2: 1.4, s1: 0.9, s2: 0.2, model: modelRef },
+      class_type: "FreeU_V2",
+      _meta: { title: "FreeU V2" },
+    };
+    modelRef = ["50", 0];
+  }
+  if (typeof options.rescale_cfg === "number" && options.rescale_cfg > 0) {
+    workflow["51"] = {
+      inputs: { multiplier: options.rescale_cfg, model: modelRef },
+      class_type: "RescaleCFG",
+      _meta: { title: "Rescale CFG" },
+    };
+    modelRef = ["51", 0];
   }
 
   // 6 / 7 — енкодинг промптів. Префікс (score-теги) додається автоматично.

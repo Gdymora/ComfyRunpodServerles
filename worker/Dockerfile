@@ -54,3 +54,22 @@ RUN comfy model download \
     comfy model download \
       --url https://huggingface.co/h94/IP-Adapter/resolve/main/models/image_encoder/model.safetensors \
       --relative-path models/clip_vision --filename CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors
+
+# --- 6. ControlNet (точний контроль пози/глибини) ---
+# Нода препроцесорів (OpenPose/DWPose/Depth) + універсальний ControlNet Union SDXL
+RUN comfy-node-install comfyui_controlnet_aux
+RUN comfy model download \
+      --url https://huggingface.co/xinsir/controlnet-union-sdxl-1.0/resolve/main/diffusion_pytorch_model_promax.safetensors \
+      --relative-path models/controlnet --filename controlnet-union-sdxl-promax.safetensors
+
+# --- 7. Апскейлер 4x-UltraSharp (різкі деталі шкіри на Hi-Res, краще за латент) ---
+# ⚠️ URL звірте, якщо 404 (є багато дзеркал 4x-UltraSharp.pth).
+RUN comfy model download \
+      --url https://huggingface.co/uwg/upscaler/resolve/main/ESRGAN/4x-UltraSharp.pth \
+      --relative-path models/upscale_models --filename 4x-UltraSharp.pth
+
+# --- 8. (Опційно) Негативні embeddings ---
+# FastNegativeV2 / BadDream зручно тягнути з civitai.com (з токеном) у models/embeddings.
+# Приклад (замініть <TOKEN> і version-id):
+# RUN comfy model download --url "https://civitai.com/api/download/models/<VER>?token=<TOKEN>" \
+#       --relative-path models/embeddings --filename FastNegativeV2.pt

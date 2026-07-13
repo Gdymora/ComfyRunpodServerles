@@ -41,3 +41,6 @@ client/public/examples/example-*.png
 
 # Логи проксі (можуть містити промпти)
 runpod-proxy/logs/
+
+# Експорти персональних пресетів (приватні, можуть містити промпти)
+presets-*.json
