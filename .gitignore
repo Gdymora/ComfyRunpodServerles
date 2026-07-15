@@ -26,6 +26,8 @@ dist-ssr
 
 # Конфіденційні нотатки з API-токенами Civitai (НЕ комітити)
 civitai.red.md
+# Локальні нотатки з токенами — не комітити. Факти з них витягнуті в worker/README.md.
+Хроніка розгортання*.md
 history.md
 docker.md
 new.md

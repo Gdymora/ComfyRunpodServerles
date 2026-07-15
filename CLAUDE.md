@@ -17,7 +17,7 @@ client (React+Vite)  →  runpod-proxy (Node)  →  RunPod Serverless  →  Comf
 | `client/` | UI. `src/config/models.ts` — реєстр пресетів моделей. `src/utils/promptUtils.ts` — збірка ComfyUI-графа JSON |
 | `runpod-proxy/` | проксі; тримає `RUNPOD_API_KEY`, щоб ключ не світився в браузері |
 | `worker/` | `Dockerfile` власного образу + детальний `README.md` (**читати перед будь-якою роботою з образом/волюмом**) |
-| `civitai.red.md` | історія завантаження моделей з civitai + ID версій |
+| `civitai.red.md`, `Хроніка розгортання*.md` | **локальні, у `.gitignore`** (містять токени). Історія завантаження моделей. Усі факти з них уже витягнуті в `worker/README.md` |
 
 ```bash
 cd client && npm run dev          # UI
@@ -61,7 +61,13 @@ curl -s -X POST https://api.runpod.io/graphql -H "Authorization: Bearer $KEY" \
 - **`grep -r` тут бреше.** Це `ugrep`, і він поважає `.gitignore` — а `civitai.red.md`
   (уся історія завантаження моделей!) саме там. Рекурсивний пошук його **не бачить**.
   Шукати в ньому тільки прямо: `grep ... civitai.red.md`.
-- **ID моделі ≠ ID версії civitai.** У URL завантаження працює лише `modelVersionId`.
+- **ID моделі ≠ ID версії civitai, і помилка МОВЧАЗНА.** З ID сторінки civitai.red не
+  дає 404 — він редіректом підсовує чужий файл. Реально сталося: `1950841` (сторінка
+  IntoRealism) принесла 325 МБ лори персонажа з King of Fighters. Після кожного
+  завантаження звіряти розмір: чекпоінт ~6.5G, лора ~218M.
+- **Не пропонувати «запекти чекпоінти в образ».** Така чернетка Dockerfile ходить по
+  чатах: вона втрачає всі ноди (InstantID/Impact Pack), використовує ID сторінок і
+  розходиться в іменах з `models.ts`. Розбір — у `worker/README.md`, розділ «Так робити НЕ треба».
 - **Імена файлів моделей оманливі**: `skinny-18-sdxl.safetensors` — це насправді
   Pony Diffusion V6 (версія `290640`), а не модель зі сторінки `2133603`.
 

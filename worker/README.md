@@ -106,9 +106,30 @@ https://civitai.red/api/download/models/<VERSION_ID>?token=<CIVITAI_TOKEN>
 
 Токен береться на civitai.red → аватар → Account settings → API Keys → Add API Key.
 
-**⚠️ ID моделі ≠ ID версії.** У URL завантаження працює лише `modelVersionId`.
-Посилання виду `civitai.red/models/2133603/...` — це сторінка моделі; з неї треба взяти
-ID потрібної версії (у URL сторінки після вибору версії — `?modelVersionId=…`).
+**⚠️ ID моделі ≠ ID версії — і помилка тут МОВЧАЗНА.** У URL завантаження працює лише
+`modelVersionId`. Якщо підставити ID сторінки, civitai.red **не віддасть 404** — він через
+редірект підсуне випадковий чужий файл. Реальний випадок (див. «Хроніка…», ч.2):
+спроба качати IntoRealism за ID сторінки `1950841` принесла 325 МБ лори персонажа Whip
+з King of Fighters. Збірка при цьому «успішна».
+
+Тому: **завжди звіряти розмір після завантаження.** SDXL-чекпоінт ~6.5 GB,
+SD1.5 ~4 GB, SDXL-лора ~218 MB. Усе інше — сміття або HTML-помилка.
+
+Сторінку → версію: відкрити сторінку моделі, вибрати версію, взяти `?modelVersionId=…` з URL.
+
+### ❌ Так робити НЕ треба
+
+Ходить варіант Dockerfile, що качає всі чекпоінти в образ від `worker-comfyui:5.0.0-sdxl`.
+Він ламає проєкт одразу трьома способами:
+1. **Немає жодної ноди** — ні InstantID, ні Impact Pack/FaceDetailer. Уся робота зі
+   збереженням обличчя зникає; клієнтський воркфлоу падає.
+2. **ID сторінок замість версій** (`1950841`, `1972981`, `2268008`, `942483`, `2109996`,
+   `1200451`, `636427`) → мовчазне завантаження чужих файлів.
+3. **Імена не збігаються з `models.ts`** (`intorealism_ultra` замість
+   `intorealism_ultra_sdxl` тощо), `juggernaut_xl` відсутній → `Value not in list`.
+
+Плюс чекпоінти в образі = кожна заміна моделі вимагає перезбірки й багатогодинного пушу.
+Саме тому вони живуть на волюмі.
 
 | Файл на волюмі | VERSION_ID | Що це насправді |
 |---|---|---|
@@ -116,13 +137,13 @@ ID потрібної версії (у URL сторінки після вибо�
 | `pornmaster_krea2.safetensors` | `2847116` | SDXL-лора, реалізм |
 | `reverse_cowgirl_sdxl.safetensors` | `2416998` | SDXL-лора, поза |
 | `model_addon_v3.safetensors` | `1284566` | SDXL-лора |
-| `oiled_skin.safetensors` | `93231` | SD1.5-лора (сторінка моделі `87685`) |
+| `oiled_skin.safetensors` | `93231` ⚠️ | SD1.5-лора (сторінка `87685`). У чернетці Dockerfile фігурує `94081` — суперечність, звірити розмір після качання |
 | `absolutereality_inpaint.safetensors` | `134084` | SD1.5 inpaint — **у пресетах вимкнена** |
 | `intorealism_ultra_sdxl.safetensors` | `3058932` | SDXL realism (сторінка `1950841`) |
 | `juggernaut_xl.safetensors` | `1759168` | SDXL Ragnarok — дефолт + refiner |
 | `pussy_of_queens_pony.safetensors` | сторінка `1200451` | версію взяти зі сторінки |
 | `ski_slope_breasts_sdxl.safetensors` | сторінка `942483` | версію взяти зі сторінки |
-| `Skinny_(18+)_SDXL_v2.0.safetensors` | **невідомо** | джерело не записане |
+| `Skinny_(18+)_SDXL_v2.0.safetensors` | `2844381` | SDXL-лора, худорлява анатомія |
 
 Свідомо **не** перекачувати (биті/непотрібні, згідно з `models.ts`):
 `realistic_base_ultra` (`2000570`), `specialized_base`/sexgod (`2732210`),
@@ -148,12 +169,14 @@ wget -O skinny-18-sdxl.safetensors "${B}/290640?token=${T}"
 # juggernaut_xl / intorealism — версії 1759168 та 3058932
 
 cd /runpod-volume/models/loras
-wget -O pornmaster_krea2.safetensors     "${B}/2847116?token=${T}"
-wget -O reverse_cowgirl_sdxl.safetensors "${B}/2416998?token=${T}"
-wget -O model_addon_v3.safetensors       "${B}/1284566?token=${T}"
+wget -O pornmaster_krea2.safetensors        "${B}/2847116?token=${T}"
+wget -O reverse_cowgirl_sdxl.safetensors    "${B}/2416998?token=${T}"
+wget -O model_addon_v3.safetensors          "${B}/1284566?token=${T}"
+wget -O "Skinny_(18+)_SDXL_v2.0.safetensors" "${B}/2844381?token=${T}"
 
 unset T B
-ls -lh /runpod-volume/models/checkpoints /runpod-volume/models/loras   # ПЕРЕВІРИТИ РОЗМІРИ
+# ОБОВ'ЯЗКОВО: чекпоінт ~6.5G, лора ~218M. Інший розмір = підсунули чужий файл.
+ls -lh /runpod-volume/models/checkpoints /runpod-volume/models/loras
 ```
 
 4. **Зняти інвентар у репозиторій**, щоб більше не втрачати провенанс:
