@@ -106,40 +106,66 @@ https://civitai.red/api/download/models/<VERSION_ID>?token=<CIVITAI_TOKEN>
 
 Токен береться на civitai.red → аватар → Account settings → API Keys → Add API Key.
 
-| Файл | VERSION_ID | Звідки відомо |
+**⚠️ ID моделі ≠ ID версії.** У URL завантаження працює лише `modelVersionId`.
+Посилання виду `civitai.red/models/2133603/...` — це сторінка моделі; з неї треба взяти
+ID потрібної версії (у URL сторінки після вибору версії — `?modelVersionId=…`).
+
+| Файл на волюмі | VERSION_ID | Що це насправді |
 |---|---|---|
-| `skinny-18-sdxl.safetensors` | `290640` | прямий `wget` у `civitai.red.md` |
-| `absolutereality_inpaint.safetensors` | `134084` | прямий `wget` |
-| `reverse_cowgirl_sdxl.safetensors` | `2416998` | прямий `wget` |
-| `pornmaster_krea2.safetensors` | `2847116` | прямий `wget` |
-| `intorealism_ultra_sdxl.safetensors` | версія `3058932`, модель `1950841` | `models.ts` + сторінка |
-| `juggernaut_xl.safetensors` | версія `1759168` (Ragnarok) | `models.ts` |
-| `pussy_of_queens_pony.safetensors` | модель `1200451` | сторінка |
-| `ski_slope_breasts_sdxl.safetensors` | модель `942483` | сторінка |
-| `oiled_skin_sd15.safetensors` | модель `87685` | сторінка |
-| `Skinny_(18+)_SDXL_v2.0.safetensors` | **невідомо** | — |
-| `model_addon_v3.safetensors` | **невідомо** | — |
+| `skinny-18-sdxl.safetensors` | `290640` | ⚠️ **Pony Diffusion V6 / Pony XL база**, а не модель зі сторінки `2133603`. Ім'я файлу оманливе — `models.ts` теж трактує його як Pony XL |
+| `pornmaster_krea2.safetensors` | `2847116` | SDXL-лора, реалізм |
+| `reverse_cowgirl_sdxl.safetensors` | `2416998` | SDXL-лора, поза |
+| `model_addon_v3.safetensors` | `1284566` | SDXL-лора |
+| `oiled_skin.safetensors` | `93231` | SD1.5-лора (сторінка моделі `87685`) |
+| `absolutereality_inpaint.safetensors` | `134084` | SD1.5 inpaint — **у пресетах вимкнена** |
+| `intorealism_ultra_sdxl.safetensors` | `3058932` | SDXL realism (сторінка `1950841`) |
+| `juggernaut_xl.safetensors` | `1759168` | SDXL Ragnarok — дефолт + refiner |
+| `pussy_of_queens_pony.safetensors` | сторінка `1200451` | версію взяти зі сторінки |
+| `ski_slope_breasts_sdxl.safetensors` | сторінка `942483` | версію взяти зі сторінки |
+| `Skinny_(18+)_SDXL_v2.0.safetensors` | **невідомо** | джерело не записане |
 
-Де вказано «модель», а не «версію» — треба зайти на сторінку моделі й узяти
-`modelVersionId` потрібної версії; ID моделі в URL завантаження не працює.
+Свідомо **не** перекачувати (биті/непотрібні, згідно з `models.ts`):
+`realistic_base_ultra` (`2000570`), `specialized_base`/sexgod (`2732210`),
+`sexgod`, `specialized` — видалені як биті.
 
-### ⚠️ Перед видаленням старого волюма
+### Заливка нового волюма
 
-Дві лори (`Skinny_(18+)_SDXL_v2.0`, `model_addon_v3`) не мають записаного джерела —
-після видалення волюма їх не буде звідки перекачати. Тому порядок такий:
+Старий волюм (`xhvaoqt7v8`, 50 GB) **видалено 2026-07-15** — інвентар зняти не встигли,
+тому все качається з нуля за таблицею вище.
 
-1. Підняти найдешевший Pod (напр. 1x RTX 4000 Ada) **у тому ж дата-центрі**, у полі
-   Select Network Volume обрати старий диск.
-2. Зняти інвентар і **зберегти його в репозиторій**:
-   `ls -laR /workspace/models > inventory.txt`
-3. Перекачати потрібне на новий волюм.
-4. Terminate Pod (інакше палить гроші), і аж тоді видаляти старий волюм.
+1. Storage → New Volume, **~30 GB**, дата-центр **EU-RO-1** (той самий, що й ендпоінт).
+2. Pods → найдешевший GPU (напр. 1x RTX 4000 Ada) **у EU-RO-1**, у полі
+   Select Network Volume обрати новий диск.
+3. У терміналі Pod'а (токен — свіжий, з civitai.red → Account settings → API Keys):
 
-### 🔑 Витік токена
+```bash
+export T="<НОВИЙ_CIVITAI_TOKEN>"
+export B="https://civitai.red/api/download/models"
+mkdir -p /runpod-volume/models/checkpoints /runpod-volume/models/loras
 
-`civitai.red.md` містить робочий civitai-токен **відкритим текстом** і вже закомічений
-у git (`505cc8b2…`). Його варто відкликати в Account settings і надалі тримати в `.env`,
-а не в markdown. Той самий токен розсипаний по base64-рядках у тому ж файлі.
+cd /runpod-volume/models/checkpoints
+wget -O skinny-18-sdxl.safetensors "${B}/290640?token=${T}"
+# juggernaut_xl / intorealism — версії 1759168 та 3058932
+
+cd /runpod-volume/models/loras
+wget -O pornmaster_krea2.safetensors     "${B}/2847116?token=${T}"
+wget -O reverse_cowgirl_sdxl.safetensors "${B}/2416998?token=${T}"
+wget -O model_addon_v3.safetensors       "${B}/1284566?token=${T}"
+
+unset T B
+ls -lh /runpod-volume/models/checkpoints /runpod-volume/models/loras   # ПЕРЕВІРИТИ РОЗМІРИ
+```
+
+4. **Зняти інвентар у репозиторій**, щоб більше не втрачати провенанс:
+   `ls -laR /runpod-volume/models > inventory.txt`
+5. **Terminate Pod** — інакше палить гроші. Файли лишаються на волюмі.
+
+### 🔑 Токен
+
+`civitai.red.md` — **у `.gitignore`** (рядок 28), у git не потрапляв. Токени, що були в
+ньому, відкликані 2026-07-15. Новий токен коду не потрібен: він використовується лише
+вручну в терміналі Pod'а. Тримати в менеджері паролів або в кореневому `.env`
+(`CIVITAI_TOKEN=…`) — `.env` теж у `.gitignore`.
 
 ### Перевірка валідності моделі
 

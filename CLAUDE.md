@@ -31,7 +31,7 @@ cd runpod-proxy && npm start      # проксі (PORT з runpod-proxy/.env)
 | Docker Hub | `alexpetroff1978/comfyui-nsfw-face:v1` — 31.5 GB |
 | Ендпоінт (робочий) | `nsfw-photo` = `12qoor9ivy4n5o`, EU-RO-1 — його ж бачить `client/.env` |
 | Ендпоінт (спадок) | `404u30nf6dtk1f` «ComfyUI 5.2.0», без волюма |
-| Network Volume | `xhvaoqt7v8` / `nsfw-models-euro1` / 50 GB — **власник планує видалити й зробити менший (~30 GB)** |
+| Network Volume | **видалений 2026-07-15.** Треба створити новий ~30 GB у EU-RO-1 і залити моделі за таблицею у `worker/README.md` |
 
 Стан RunPod зручно читати через API (ключ у `runpod-proxy/.env`):
 
@@ -58,6 +58,12 @@ curl -s -X POST https://api.runpod.io/graphql -H "Authorization: Bearer $KEY" \
   `docker run --rm --entrypoint sh IMAGE -c 'ls -la /comfyui/models/...'`
 - **Биті моделі** (0 байт / кілька сотень КБ замість гігабайтів) валять воркера з
   `conv_in.weight` або HTTP 400. Це HTML-помилка civitai, збережена замість файлу.
+- **`grep -r` тут бреше.** Це `ugrep`, і він поважає `.gitignore` — а `civitai.red.md`
+  (уся історія завантаження моделей!) саме там. Рекурсивний пошук його **не бачить**.
+  Шукати в ньому тільки прямо: `grep ... civitai.red.md`.
+- **ID моделі ≠ ID версії civitai.** У URL завантаження працює лише `modelVersionId`.
+- **Імена файлів моделей оманливі**: `skinny-18-sdxl.safetensors` — це насправді
+  Pony Diffusion V6 (версія `290640`), а не модель зі сторінки `2133603`.
 
 ## Де стоїмо (2026-07-15)
 
@@ -67,15 +73,19 @@ curl -s -X POST https://api.runpod.io/graphql -H "Authorization: Bearer $KEY" \
   лог у скретчпаді сесії, перевірка: `docker manifest inspect alexpetroff1978/comfyui-nsfw-face:v1`
 - `worker/README.md` переписано: реальні ID, склад образу, план нового волюма.
 
+- пуш у Docker Hub **завершено** (24.4 GB стиснено, 30 шарів), перевірено
+  `docker manifest inspect`;
+- `worker/README.md` переписано: склад образу, таблиця civitai VERSION_ID, план волюма;
+- civitai-токени відкликані власником.
+
 Далі:
-1. Дочекатися пушу.
-2. **Зняти інвентар старого волюма до видалення** — дві лори (`Skinny_(18+)_SDXL_v2.0`,
-   `model_addon_v3`) не мають записаного джерела на civitai. Порядок — у `worker/README.md`.
-3. Створити новий волюм ~30 GB у EU-RO-1, залити лише потрібне (~22 GB, список у
-   `worker/README.md`); `absolutereality_inpaint` і `oiled_skin_sd15` не переносити —
-   вони вимкнені в пресетах.
-4. RunPod → `nsfw-photo` → Edit: Container Image = новий образ, новий волюм,
-   Max Workers 1 → тест → назад 0.
+1. Створити волюм ~30 GB у **EU-RO-1**, залити моделі — готовий скрипт і таблиця
+   VERSION_ID у `worker/README.md`. Старий волюм видалено без інвентаря, тому все з нуля.
+2. `Skinny_(18+)_SDXL_v2.0.safetensors` — єдиний файл без записаного джерела; шукати на
+   civitai.red вручну або викинути з `SDXL_LORAS` у `client/src/config/models.ts`.
+3. RunPod → `nsfw-photo` → Edit: Container Image = `alexpetroff1978/comfyui-nsfw-face:v1`,
+   новий волюм, Max Workers 1 → тест → назад 0.
+4. Після заливки — `ls -laR /runpod-volume/models > inventory.txt` у репозиторій.
 
 ## Технічний борг
 
